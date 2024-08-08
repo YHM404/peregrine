@@ -15,7 +15,7 @@ use tower::{
 pub(crate) struct Backends<D, B>
 where
     D: Discover + Unpin,
-    <D as Discover>::Key: Hash + Clone,
+    D::Key: Hash + Clone,
 {
     backends_config: Vec<BackendConfig>,
     pool: Balance<D, Request<B>>,
@@ -24,18 +24,17 @@ where
 impl<B> Backends<ServiceList<Vec<Constant<Forward<B>, i32>>>, B>
 where
     B: Body + Send + Unpin + 'static,
-    <B as Body>::Data: Send,
-    <B as Body>::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+    B::Data: Send,
+    B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
     pub(crate) fn new<'a>(
         backends_config: impl Iterator<Item = &'a BackendConfig>,
     ) -> Result<Self> {
         let backends_config: Vec<_> = backends_config.cloned().collect();
-        let mut server_list = Vec::with_capacity(backends_config.len());
-        for backend in &backends_config {
-            let service = Constant::new(Forward::new(backend)?, 1);
-            server_list.push(service);
-        }
+        let server_list: Vec<_> = backends_config
+            .iter()
+            .map(|backend| Forward::new(backend).map(|fwd| Constant::new(fwd, 1)))
+            .collect::<Result<Vec<_>>>()?;
 
         Ok(Self {
             backends_config,
@@ -47,14 +46,11 @@ where
 impl<B> Clone for Backends<ServiceList<Vec<Constant<Forward<B>, i32>>>, B>
 where
     B: Body + Send + Unpin + 'static,
-    <B as Body>::Data: Send,
-    <B as Body>::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+    B::Data: Send,
+    B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
     fn clone(&self) -> Self {
-        match Self::new(self.backends_config.iter()) {
-            Ok(pool) => pool,
-            Err(err) => panic!("Failed to clone Backends: {}", err),
-        }
+        Self::new(self.backends_config.iter()).expect("Failed to clone Backends")
     }
 }
 
@@ -72,7 +68,6 @@ where
 {
     type Response = Response<B2>;
     type Error = anyhow::Error;
-
     type Future = BoxFuture<'static, std::result::Result<Self::Response, Self::Error>>;
 
     fn poll_ready(
@@ -84,7 +79,7 @@ where
             .map_err(|err| anyhow!(err.to_string()))
     }
 
-    fn call(&mut self, req: http::Request<B1>) -> Self::Future {
+    fn call(&mut self, req: Request<B1>) -> Self::Future {
         self.pool
             .call(req)
             .map_err(|err| anyhow!(err.to_string()))
