@@ -50,6 +50,7 @@ where
     B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
     fn clone(&self) -> Self {
+        // expect is ok here because we already checked the config in the new function
         Self::new(self.backends_config.iter()).expect("Failed to clone Backends")
     }
 }
