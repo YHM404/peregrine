@@ -1,0 +1,13 @@
+servers:
+  - name: test
+    port: 8080
+    protocol: Http
+    backends:
+      backend1:
+        host: localhost
+        port: 8081
+        enable_h2c: true
+      backend2:
+        host: localhost
+        port: 8082
+        enable_h2c: true

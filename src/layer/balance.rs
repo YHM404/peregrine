@@ -12,7 +12,7 @@ use tower::{
     Service,
 };
 
-pub(crate) struct Backends<D, B>
+pub(crate) struct Endpoints<D, B>
 where
     D: Discover + Unpin,
     D::Key: Hash + Clone,
@@ -21,7 +21,7 @@ where
     pool: Balance<D, Request<B>>,
 }
 
-impl<B> Backends<ServiceList<Vec<Constant<Forward<B>, i32>>>, B>
+impl<B> Endpoints<ServiceList<Vec<Constant<Forward<B>, i32>>>, B>
 where
     B: Body + Send + Unpin + 'static,
     B::Data: Send,
@@ -43,7 +43,7 @@ where
     }
 }
 
-impl<B> Clone for Backends<ServiceList<Vec<Constant<Forward<B>, i32>>>, B>
+impl<B> Clone for Endpoints<ServiceList<Vec<Constant<Forward<B>, i32>>>, B>
 where
     B: Body + Send + Unpin + 'static,
     B::Data: Send,
@@ -55,7 +55,7 @@ where
     }
 }
 
-impl<B1, B2, D> Service<Request<B1>> for Backends<D, B1>
+impl<B1, B2, D> Service<Request<B1>> for Endpoints<D, B1>
 where
     D: Discover + Unpin,
     D::Key: Hash + Clone,

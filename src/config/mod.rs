@@ -8,10 +8,12 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub(crate) struct Config {
+    pub(crate) log_config: Option<LogConfig>,
     pub(crate) servers: HashSet<ServerConfig>,
 }
 
 impl Config {
+    #[allow(dead_code)]
     pub(crate) fn from_toml_file<P: AsRef<Path>>(
         file: P,
     ) -> Result<Self, Box<dyn std::error::Error>> {
@@ -57,6 +59,11 @@ pub(crate) struct BackendConfig {
     pub(crate) enable_h2c: bool,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub(crate) struct LogConfig {
+    pub(crate) log_path: String,
+}
+
 #[cfg(test)]
 mod tests {
     use std::io::Write;
@@ -97,6 +104,8 @@ mod tests {
     #[test]
     fn test_config_from_yaml_file() {
         let cfg_str = r#"
+        log_config:
+          log_path: ./aaa
         servers:
         - name: test
           port: 8080
@@ -119,6 +128,12 @@ mod tests {
         tmp_file.write_all(cfg_str.as_bytes()).unwrap();
 
         let config = Config::from_yaml_file(tmp_file.path().to_str().unwrap()).unwrap();
+        assert_eq!(
+            config.log_config,
+            Some(LogConfig {
+                log_path: "./aaa".to_string()
+            })
+        );
         assert_eq!(config.servers.len(), 1);
         let server = config.servers.iter().next().unwrap();
         assert_eq!(server.name, "test");

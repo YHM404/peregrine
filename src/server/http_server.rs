@@ -23,7 +23,7 @@ impl HttpServer {
         loop {
             if let Ok((stream, _addr)) = listener.accept().await {
                 let io = TokioIo::new(stream);
-                let svc = balance::Backends::new(self.config.backends.values())?;
+                let svc = balance::Endpoints::new(self.config.backends.values())?;
                 let handler = service_fn(move |req| svc.clone().oneshot(req));
                 tokio::task::spawn(async move {
                     if let Err(err) = http2::Builder::new(hyper_util::rt::TokioExecutor::new())
