@@ -1,6 +1,7 @@
 use anyhow::Result;
 use hyper::{server::conn::http2, service::service_fn};
 use hyper_util::rt::TokioIo;
+use log::{error, info};
 use tokio::net::TcpListener;
 use tower::ServiceExt;
 
@@ -17,7 +18,7 @@ impl HttpServer {
 
     pub(crate) async fn run(&self) -> Result<()> {
         let listener = TcpListener::bind(("0.0.0.0", self.config.port)).await?;
-        println!("Listening on http://{}", listener.local_addr()?);
+        info!("Listening on http://{}", listener.local_addr()?);
 
         loop {
             if let Ok((stream, _addr)) = listener.accept().await {
@@ -29,7 +30,7 @@ impl HttpServer {
                         .serve_connection(io, handler)
                         .await
                     {
-                        println!("Failed to serve connection: {:?}", err);
+                        error!("Failed to serve connection: {:?}", err);
                     }
                 });
             }

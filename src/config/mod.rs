@@ -18,6 +18,13 @@ impl Config {
         let content = std::fs::read_to_string(file)?;
         Ok(toml::from_str(&content)?)
     }
+
+    pub(crate) fn from_yaml_file<P: AsRef<Path>>(
+        file: P,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let content = std::fs::read_to_string(file)?;
+        Ok(serde_yaml::from_str(&content)?)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -85,5 +92,45 @@ mod tests {
         let backend = server.backends.get("backend1").unwrap();
         assert_eq!(backend.host, "localhost");
         assert_eq!(backend.port, 8081);
+    }
+
+    #[test]
+    fn test_config_from_yaml_file() {
+        let cfg_str = r#"
+        servers:
+        - name: test
+          port: 8080
+          protocol: Http
+          backends:
+            backend1:
+              host: localhost
+              port: 8081
+              enable_h2c: true
+            backend2:
+              host: localhost
+              port: 8082
+        "#;
+
+        let mut tmp_file = tempfile::Builder::new()
+            .prefix("config")
+            .suffix(".yaml")
+            .tempfile()
+            .unwrap();
+        tmp_file.write_all(cfg_str.as_bytes()).unwrap();
+
+        let config = Config::from_yaml_file(tmp_file.path().to_str().unwrap()).unwrap();
+        assert_eq!(config.servers.len(), 1);
+        let server = config.servers.iter().next().unwrap();
+        assert_eq!(server.name, "test");
+        assert_eq!(server.port, 8080);
+        assert_eq!(server.protocol, Protocol::Http);
+        assert_eq!(server.backends.len(), 2);
+        let backend1 = server.backends.get("backend1").unwrap();
+        assert_eq!(backend1.host, "localhost");
+        assert_eq!(backend1.port, 8081);
+        assert_eq!(backend1.enable_h2c, true);
+        let backend2 = server.backends.get("backend2").unwrap();
+        assert_eq!(backend2.host, "localhost");
+        assert_eq!(backend2.port, 8082);
     }
 }
