@@ -18,7 +18,7 @@ impl HttpServer {
 
     pub(crate) async fn run(&self) -> Result<()> {
         let listener = TcpListener::bind(("0.0.0.0", self.config.port)).await?;
-        info!("Listening on http://{}", listener.local_addr()?);
+        info!("Listening on {}", listener.local_addr()?);
 
         loop {
             if let Ok((stream, _addr)) = listener.accept().await {

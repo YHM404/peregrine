@@ -1,11 +1,15 @@
+use ::log::info;
 use anyhow::anyhow;
 use clap::Parser;
 use server::http_server::HttpServer;
-use tokio::main;
+
+use signal_handle::SignalHandler;
+use tokio::{main, signal::unix::SignalKind};
 mod config;
 mod layer;
 mod log;
 mod server;
+mod signal_handle;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -33,12 +37,31 @@ async fn main() -> anyhow::Result<()> {
 
     log::init_logger(config.log_config)?;
 
-    let server_config = config
-        .servers
-        .into_iter()
-        .next()
-        .ok_or(anyhow!("No server config found"))?;
-    HttpServer::new(server_config).run().await?;
-
+    let mut handlers = Vec::new();
+    for server_config in config.servers {
+        let handler = HttpServer::new(server_config).run().await?;
+        handlers.push(handler);
+    }
+    handle_signals().await?;
     Ok(())
+}
+
+async fn handle_signals() -> anyhow::Result<()> {
+    let mut handler = SignalHandler::new();
+
+    handler
+        .handle_signal(SignalKind::terminate(), || {
+            info!("Received SIGTERM signal, shutting down...");
+            std::process::exit(0);
+        })?
+        .handle_signal(SignalKind::interrupt(), || {
+            info!("Received SIGINT signal, shutting down...");
+            std::process::exit(0);
+        })?
+        .handle_signal(SignalKind::hangup(), || {
+            info!("Received SIGHUP signal, reloading config...");
+            // TODO: graceful upgrade
+        })?;
+
+    handler.run().await
 }
